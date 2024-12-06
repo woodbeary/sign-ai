@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -52,7 +52,7 @@ export function HandTracker() {
     getDevices();
   }, []);
 
-  const requestCameraPermission = async () => {
+  const requestCameraPermission = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -75,7 +75,7 @@ export function HandTracker() {
       console.error('Failed to get camera permission:', err);
       setHasPermission(false);
     }
-  };
+  }, [selectedDeviceId, isMobile]);
 
   // Switch camera when device changes
   useEffect(() => {
