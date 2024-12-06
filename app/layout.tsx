@@ -24,7 +24,10 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Sign AI - Learn Sign Language with AI',
+  title: {
+    template: '%s | Sign AI',
+    default: 'Sign AI - Learn Sign Language with AI'
+  },
   description: 'Practice sign language alphabet with AI-powered hand tracking technology. Interactive, real-time feedback helps you learn at your own pace.',
   applicationName: 'Sign AI',
   appleWebApp: {

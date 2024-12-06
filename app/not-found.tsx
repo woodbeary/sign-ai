@@ -1,17 +1,12 @@
-'use client';
-
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Metadata } from 'next';
 
-export const metadata = {
-  title: 'Not Found',
-  description: 'Page not found',
-};
-
-export const viewport = {
-  themeColor: '#000000',
-  width: 'device-width',
-  initialScale: 1,
+export const generateMetadata = (): Metadata => {
+  return {
+    title: 'Not Found',
+    description: 'Page not found',
+  };
 };
 
 export default function NotFound() {
