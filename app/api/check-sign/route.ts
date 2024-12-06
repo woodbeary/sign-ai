@@ -13,18 +13,22 @@ export async function POST(req: Request) {
 
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const prompt = `You are an expert in American Sign Language (ASL). 
+    const prompt = `You are an expert specifically in American Sign Language (ASL) alphabet.
     I will show you an image of someone making a hand sign.
     The target letter they are trying to sign is: "${targetLetter}"
     
-    Please analyze if they are correctly signing this letter in ASL.
+    IMPORTANT: You must ONLY evaluate this based on American Sign Language (ASL) alphabet standards.
+    Do NOT consider other sign language systems like BSL, Auslan, or other international sign languages.
+    
+    Please analyze if they are correctly signing this letter according to ASL alphabet standards.
     
     Respond with a JSON object containing:
-    - matches: boolean (true if the sign matches the letter, false if not)
+    - matches: boolean (true if the sign matches the ASL letter, false if not)
     - confidence: number (0-100 indicating how confident you are in this assessment)
-    - feedback: string (brief feedback about what's correct or what needs adjustment)
+    - feedback: string (brief feedback about what's correct or what needs adjustment based on ASL standards)
     
-    Focus only on the hand position and shape, ignore background, clothing, etc.
+    Focus only on the hand position and shape according to ASL standards, ignore background, clothing, etc.
+    If the sign appears to be from a different sign language system, mark it as not matching.
     
     IMPORTANT: Respond ONLY with the JSON object, no other text.`;
 

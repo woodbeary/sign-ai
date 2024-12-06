@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import { HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useMediaQuery } from 'react-responsive';
 
 // Define the alphabet and corresponding signs
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 export function HandTracker() {
+  const isMobile = useMediaQuery({ maxWidth: 767 });
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -17,16 +19,56 @@ export function HandTracker() {
   const [isChecking, setIsChecking] = useState(false);
   const [feedback, setFeedback] = useState<string>('');
   const [confidence, setConfidence] = useState<number>(0);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+
+  // Get available video devices
+  useEffect(() => {
+    async function getDevices() {
+      try {
+        // First request with no constraints to get permission
+        await navigator.mediaDevices.getUserMedia({ video: true });
+        
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        setDevices(videoDevices);
+
+        // Try to find built-in camera
+        const defaultDevice = videoDevices.find(device => 
+          device.label.toLowerCase().includes('built-in') || 
+          device.label.toLowerCase().includes('facetime')
+        );
+
+        // Set default to built-in camera or first available
+        if (defaultDevice) {
+          setSelectedDeviceId(defaultDevice.deviceId);
+        } else if (videoDevices.length > 0) {
+          setSelectedDeviceId(videoDevices[0].deviceId);
+        }
+      } catch (err) {
+        console.error('Error getting devices:', err);
+      }
+    }
+    getDevices();
+  }, []);
 
   const requestCameraPermission = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true
+        video: {
+          deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+          width: { ideal: isMobile ? 720 : 1280 },
+          height: { ideal: isMobile ? 1280 : 720 },
+          facingMode: isMobile ? "user" : "user",
+          aspectRatio: isMobile ? 9/16 : 16/9
+        }
       });
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+        };
       }
       setHasPermission(true);
     } catch (err) {
@@ -34,6 +76,13 @@ export function HandTracker() {
       setHasPermission(false);
     }
   };
+
+  // Switch camera when device changes
+  useEffect(() => {
+    if (selectedDeviceId && hasPermission) {
+      requestCameraPermission();
+    }
+  }, [selectedDeviceId]);
 
   const nextLetter = () => {
     const currentIndex = ALPHABET.indexOf(currentLetter);
@@ -106,6 +155,19 @@ export function HandTracker() {
       setConfidence(0);
     } finally {
       setIsChecking(false);
+    }
+  };
+
+  // Add video dimensions state
+  const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
+
+  // Handle video dimensions
+  const handleVideoLoad = () => {
+    if (videoRef.current) {
+      setVideoDimensions({
+        width: videoRef.current.videoWidth,
+        height: videoRef.current.videoHeight
+      });
     }
   };
 
@@ -188,22 +250,32 @@ export function HandTracker() {
 
     const detectHands = () => {
       if (!videoRef.current || !handLandmarker || !canvasRef.current) return;
+      if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
+        requestAnimationFrame(detectHands);
+        return;
+      }
 
       // Make sure canvas matches video dimensions
-      const videoElement = videoRef.current;
-      canvasRef.current.width = videoElement.videoWidth;
-      canvasRef.current.height = videoElement.videoHeight;
-
-      const results = handLandmarker.detectForVideo(videoRef.current, performance.now());
-      if (results.landmarks && results.landmarks.length > 0) {
-        drawHand(results.landmarks[0]); // Draw the first detected hand
-      } else {
-        // Clear canvas if no hands detected
-        const ctx = canvasRef.current.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        }
+      if (canvasRef.current.width !== videoRef.current.videoWidth) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
       }
+
+      try {
+        const results = handLandmarker.detectForVideo(videoRef.current, performance.now());
+        if (results.landmarks && results.landmarks.length > 0) {
+          drawHand(results.landmarks[0]);
+        } else {
+          // Clear canvas if no hands detected
+          const ctx = canvasRef.current.getContext('2d');
+          if (ctx) {
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+          }
+        }
+      } catch (error) {
+        console.error('Hand detection error:', error);
+      }
+      
       requestAnimationFrame(detectHands);
     };
 
@@ -239,42 +311,74 @@ export function HandTracker() {
   }
 
   return (
-    <div className="space-y-4">
-      <Card className="p-4 text-center">
-        <h2 className="text-2xl font-bold mb-2">Current Letter: {currentLetter}</h2>
-        <p className={`text-lg ${isCorrectPose ? 'text-green-500' : feedback ? 'text-red-500' : 'text-yellow-500'}`}>
+    <div className="space-y-4 w-full max-w-screen-lg mx-auto px-2 md:px-4">
+      <Card className="p-3 md:p-4 text-center">
+        {devices.length > 1 && (
+          <div className="mb-4">
+            <select
+              value={selectedDeviceId}
+              onChange={(e) => setSelectedDeviceId(e.target.value)}
+              className="w-full max-w-xs p-2 rounded-md border border-gray-300 bg-background text-sm"
+            >
+              <option value="">Current Device Camera</option>
+              {devices.map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.label || `Camera ${devices.indexOf(device) + 1}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        
+        <h2 className="text-xl md:text-2xl lg:text-3xl font-bold mb-2">Current Letter: {currentLetter}</h2>
+        <p className={`text-sm md:text-base lg:text-lg ${isCorrectPose ? 'text-green-500' : feedback ? 'text-red-500' : 'text-yellow-500'}`}>
           {feedback || 'Make the sign and click "Check Sign"'}
         </p>
         {confidence > 0 && (
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs md:text-sm text-gray-500 mt-1">
             Confidence: {confidence}%
           </p>
         )}
-        <div className="flex justify-center gap-4 mt-4">
-          <Button onClick={previousLetter}>Previous Letter</Button>
+        <div className="flex flex-wrap justify-center gap-2 md:gap-4 mt-3 md:mt-4">
+          <Button 
+            onClick={previousLetter}
+            className="text-xs md:text-sm h-8 md:h-9"
+          >
+            Previous
+          </Button>
           <Button 
             onClick={checkSign} 
             disabled={isChecking}
-            className={isChecking ? 'opacity-50' : ''}
+            className={`text-xs md:text-sm h-8 md:h-9 ${isChecking ? 'opacity-50' : ''}`}
           >
             {isChecking ? 'Checking...' : 'Check Sign'}
           </Button>
-          <Button onClick={nextLetter}>Next Letter</Button>
+          <Button 
+            onClick={nextLetter}
+            className="text-xs md:text-sm h-8 md:h-9"
+          >
+            Next
+          </Button>
         </div>
       </Card>
 
-      <div className="relative w-full max-w-lg mx-auto">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full aspect-video bg-black rounded-lg"
-        />
-        <canvas
-          ref={canvasRef}
-          className="absolute top-0 left-0 w-full h-full"
-        />
+      <div className="relative w-full max-w-md mx-auto">
+        <div className="relative w-full overflow-hidden rounded-lg" style={{ 
+          maxHeight: '60vh',
+          aspectRatio: isMobile ? '9/16' : '16/9'
+        }}>
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover bg-black"
+          />
+          <canvas
+            ref={canvasRef}
+            className="absolute top-0 left-0 w-full h-full"
+          />
+        </div>
       </div>
     </div>
   );
