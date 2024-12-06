@@ -78,6 +78,7 @@ export function HandTracker() {
   }, [selectedDeviceId, isMobile]);
 
   // Switch camera when device changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (selectedDeviceId && hasPermission) {
       requestCameraPermission();
@@ -155,6 +156,7 @@ export function HandTracker() {
   };
 
   // Add hand tracking after camera is working
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!hasPermission || !videoRef.current || !canvasRef.current) return;
 
