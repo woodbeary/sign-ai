@@ -82,7 +82,7 @@ export function HandTracker() {
     if (selectedDeviceId && hasPermission) {
       requestCameraPermission();
     }
-  }, [selectedDeviceId, hasPermission, requestCameraPermission]);
+  }, [selectedDeviceId, hasPermission]);
 
   const nextLetter = () => {
     const currentIndex = ALPHABET.indexOf(currentLetter);
@@ -349,17 +349,19 @@ export function HandTracker() {
           maxHeight: '60vh',
           aspectRatio: isMobile ? '9/16' : '16/9'
         }}>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover bg-black"
-          />
-          <canvas
-            ref={canvasRef}
-            className="absolute top-0 left-0 w-full h-full"
-          />
+          <div className="transform scale-x-[-1]">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover bg-black"
+            />
+            <canvas
+              ref={canvasRef}
+              className="absolute top-0 left-0 w-full h-full"
+            />
+          </div>
         </div>
       </div>
     </div>

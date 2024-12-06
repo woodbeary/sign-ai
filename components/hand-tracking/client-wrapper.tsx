@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 
 const DynamicHandTracker = dynamic(
@@ -8,5 +9,9 @@ const DynamicHandTracker = dynamic(
 );
 
 export function HandTrackerWrapper() {
-  return <DynamicHandTracker />;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DynamicHandTracker />
+    </Suspense>
+  );
 } 
