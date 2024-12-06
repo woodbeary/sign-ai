@@ -59,7 +59,7 @@ export function HandTracker() {
           deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
           width: { ideal: isMobile ? 720 : 1280 },
           height: { ideal: isMobile ? 1280 : 720 },
-          facingMode: isMobile ? "user" : "user",
+          facingMode: "user",
           aspectRatio: isMobile ? 9/16 : 16/9
         }
       });
@@ -111,10 +111,6 @@ export function HandTracker() {
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
-    
-    // Flip the image horizontally to match what the user sees
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
     
     ctx.drawImage(videoRef.current, 0, 0);
     return canvas.toDataURL('image/jpeg');
