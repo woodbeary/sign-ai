@@ -63,7 +63,7 @@ export function HandTracker() {
           deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
           width: { ideal: isMobile ? 720 : 1280 },
           height: { ideal: isMobile ? 1280 : 720 },
-          facingMode: "user",
+          facingMode: isMobile ? "environment" : "user",
           aspectRatio: isMobile ? 9/16 : 16/9
         }
       });
@@ -201,11 +201,18 @@ export function HandTracker() {
         color = '#FF0000'; // Red when incorrect
       }
       
+      // Adjust line width for mobile
+      const lineWidth = isMobile ? 4 : 2;
+      const pointRadius = isMobile ? 6 : 3;
+      
       ctx.fillStyle = color;
       ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = lineWidth;
 
-      // Draw each landmark
+      // Draw each landmark with shadow for better visibility
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowBlur = 4;
+      
       landmarks.forEach((landmark) => {
         // Scale coordinates to canvas size
         const x = landmark.x * ctx.canvas.width;
@@ -213,9 +220,13 @@ export function HandTracker() {
 
         // Draw landmark point
         ctx.beginPath();
-        ctx.arc(x, y, 3, 0, 2 * Math.PI);
+        ctx.arc(x, y, pointRadius, 0, 2 * Math.PI);
         ctx.fill();
       });
+
+      // Reset shadow for lines
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
 
       // Connect landmarks with lines to form hand skeleton
       const connections = [
@@ -264,7 +275,15 @@ export function HandTracker() {
     };
 
     setupHandTracking();
-  }, [hasPermission, feedback, isCorrectPose]);
+
+    // Cleanup function
+    return () => {
+      if (videoRef.current?.srcObject) {
+        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+        tracks.forEach(track => track.stop());
+      }
+    };
+  }, [hasPermission, feedback, isCorrectPose, isMobile]);
 
   useEffect(() => {
     if (hasPermission) {
@@ -351,18 +370,29 @@ export function HandTracker() {
           maxHeight: '60vh',
           aspectRatio: isMobile ? '9/16' : '16/9'
         }}>
-          <div className="transform scale-x-[-1]">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover bg-black"
-            />
-            <canvas
-              ref={canvasRef}
-              className="absolute top-0 left-0 w-full h-full"
-            />
+          <video
+            ref={videoRef}
+            className="w-full h-full object-cover bg-black"
+            style={{ transform: isMobile ? 'scaleX(-1)' : 'none' }}
+            autoPlay
+            playsInline
+            muted
+          />
+          <canvas
+            ref={canvasRef}
+            className="absolute top-0 left-0 w-full h-full"
+            style={{ transform: isMobile ? 'scaleX(-1)' : 'none' }}
+          />
+          <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/50 to-transparent">
+            <div className="flex flex-col items-center space-y-2">
+              {feedback && (
+                <div className={`text-sm md:text-base font-medium ${
+                  isCorrectPose ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {feedback}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
