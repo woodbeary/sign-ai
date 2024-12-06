@@ -82,7 +82,7 @@ export function HandTracker() {
     if (selectedDeviceId && hasPermission) {
       requestCameraPermission();
     }
-  }, [selectedDeviceId]);
+  }, [selectedDeviceId, hasPermission, requestCameraPermission]);
 
   const nextLetter = () => {
     const currentIndex = ALPHABET.indexOf(currentLetter);
@@ -158,19 +158,6 @@ export function HandTracker() {
     }
   };
 
-  // Add video dimensions state
-  const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
-
-  // Handle video dimensions
-  const handleVideoLoad = () => {
-    if (videoRef.current) {
-      setVideoDimensions({
-        width: videoRef.current.videoWidth,
-        height: videoRef.current.videoHeight
-      });
-    }
-  };
-
   // Add hand tracking after camera is working
   useEffect(() => {
     if (!hasPermission || !videoRef.current || !canvasRef.current) return;
@@ -194,9 +181,8 @@ export function HandTracker() {
       detectHands();
     };
 
-    const drawHand = (landmarks: any[]) => {
+    const drawHand = (landmarks: { x: number; y: number }[]) => {
       const ctx = canvasRef.current!.getContext('2d')!;
-      const videoElement = videoRef.current!;
       
       // Clear previous drawings
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
