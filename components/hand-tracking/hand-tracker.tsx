@@ -24,6 +24,8 @@ export function HandTracker() {
 
   // Get available video devices
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     async function getDevices() {
       try {
         // First request with no constraints to get permission
@@ -53,6 +55,8 @@ export function HandTracker() {
   }, []);
 
   const requestCameraPermission = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -104,7 +108,7 @@ export function HandTracker() {
   };
 
   const captureFrame = () => {
-    if (!videoRef.current) return null;
+    if (typeof window === 'undefined' || !videoRef.current) return null;
 
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
@@ -156,9 +160,8 @@ export function HandTracker() {
   };
 
   // Add hand tracking after camera is working
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!hasPermission || !videoRef.current || !canvasRef.current) return;
+    if (typeof window === 'undefined' || !hasPermission || !videoRef.current || !canvasRef.current) return;
 
     let handLandmarker: HandLandmarker;
     
@@ -180,7 +183,10 @@ export function HandTracker() {
     };
 
     const drawHand = (landmarks: { x: number; y: number }[]) => {
-      const ctx = canvasRef.current!.getContext('2d')!;
+      if (!canvasRef.current) return;
+      
+      const ctx = canvasRef.current.getContext('2d');
+      if (!ctx) return;
       
       // Clear previous drawings
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -249,22 +255,16 @@ export function HandTracker() {
         const results = handLandmarker.detectForVideo(videoRef.current, performance.now());
         if (results.landmarks && results.landmarks.length > 0) {
           drawHand(results.landmarks[0]);
-        } else {
-          // Clear canvas if no hands detected
-          const ctx = canvasRef.current.getContext('2d');
-          if (ctx) {
-            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-          }
         }
       } catch (error) {
         console.error('Hand detection error:', error);
       }
-      
+
       requestAnimationFrame(detectHands);
     };
 
     setupHandTracking();
-  }, [hasPermission, isCorrectPose, feedback]);
+  }, [hasPermission, feedback, isCorrectPose]);
 
   useEffect(() => {
     if (hasPermission) {

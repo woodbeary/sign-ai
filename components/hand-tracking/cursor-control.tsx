@@ -18,6 +18,8 @@ const getDistance = (p1: { x: number; y: number }, p2: { x: number; y: number })
 
 // Function to simulate mouse events
 const simulateMouseEvent = (type: string, x: number, y: number) => {
+  if (typeof window === 'undefined') return;
+  
   const element = document.elementFromPoint(x, y);
   if (!element) return;
 
@@ -58,12 +60,24 @@ const simulateMouseEvent = (type: string, x: number, y: number) => {
 export function CursorControl() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
-  const lastPositionRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const lastPositionRef = useRef<{ x: number; y: number } | null>(null);
   const lastGestureRef = useRef<keyof typeof CURSOR_STYLES>('default');
   const isRightHandRef = useRef(true);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Initialize position on client side
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      lastPositionRef.current = {
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     // Create cursor element
     const cursor = document.createElement('div');
     cursor.textContent = CURSOR_STYLES.default;
@@ -74,12 +88,18 @@ export function CursorControl() {
     cursor.style.transition = 'transform 0.1s ease';
     cursor.style.left = '0';
     cursor.style.top = '0';
-    cursor.style.transform = `translate(${lastPositionRef.current.x}px, ${lastPositionRef.current.y}px)`;
+    
+    if (lastPositionRef.current) {
+      cursor.style.transform = `translate(${lastPositionRef.current.x}px, ${lastPositionRef.current.y}px)`;
+    }
+    
     document.body.appendChild(cursor);
     cursorRef.current = cursor;
 
     // Setup hand tracking
     async function setupHandTracking() {
+      if (typeof window === 'undefined') return;
+      
       try {
         // Get camera stream
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -125,9 +145,11 @@ export function CursorControl() {
               const adjustedX = x + angleOffset * window.innerWidth;
 
               // Update cursor position
-              lastPositionRef.current.x = lastPositionRef.current.x * 0.3 + adjustedX * 0.7;
-              lastPositionRef.current.y = lastPositionRef.current.y * 0.3 + y * 0.7;
-              cursorRef.current.style.transform = `translate(${lastPositionRef.current.x}px, ${lastPositionRef.current.y}px)`;
+              if (lastPositionRef.current) {
+                lastPositionRef.current.x = lastPositionRef.current.x * 0.3 + adjustedX * 0.7;
+                lastPositionRef.current.y = lastPositionRef.current.y * 0.3 + y * 0.7;
+                cursorRef.current.style.transform = `translate(${lastPositionRef.current.x}px, ${lastPositionRef.current.y}px)`;
+              }
 
               // Detect gestures
               // Fist detection - check if all fingers are curled
@@ -165,9 +187,9 @@ export function CursorControl() {
                 }
 
                 // Handle click actions immediately for better responsiveness
-                if (currentGesture === 'click') {
+                if (currentGesture === 'click' && lastPositionRef.current) {
                   simulateMouseEvent('click', lastPositionRef.current.x, lastPositionRef.current.y);
-                } else if (currentGesture === 'rightClick') {
+                } else if (currentGesture === 'rightClick' && lastPositionRef.current) {
                   simulateMouseEvent('contextmenu', lastPositionRef.current.x, lastPositionRef.current.y);
                 }
                 // Note: highlight action can be added here later
@@ -176,7 +198,7 @@ export function CursorControl() {
               }
 
               // Handle scrolling with open palm near edges
-              if (currentGesture === 'default') {
+              if (currentGesture === 'default' && typeof window !== 'undefined') {
                 const scrollThreshold = 0.15;
                 const scrollSpeed = 15;
                 if (y / window.innerHeight < scrollThreshold) {
