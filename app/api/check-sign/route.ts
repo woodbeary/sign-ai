@@ -11,7 +11,8 @@ export async function POST(req: Request) {
     // Remove data URL prefix to get base64
     const base64Image = image.split(',')[1];
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Gemini 1.5 Flash was retired in 2025; set GEMINI_MODEL to pin another current model
+    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' });
 
     const prompt = `You are an expert specifically in American Sign Language (ASL) alphabet.
     I will show you an image of someone making a hand sign.
